@@ -7,6 +7,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from rig import C, INK, shade, bez, lerp, clamp, Aff, shadow, GOLD
 
 INK5 = C('231a2e'); OL = 7.5
+STYLE = dict(legs='thick', arms='thin')
+PANTS = {'napoleon': C('f2eee4'), 'berthier': C('f2eee4'), 'tsar': C('2f4a3a'), 'hunter': C('d8c9a2'), 'farmer': C('3e5f8f')}
+BOOT = {'napoleon': C('1d1a22'), 'berthier': C('1d1a22'), 'tsar': C('1d1a22'), 'hunter': C('4a3324'), 'farmer': C('4a3324')}
 HEAD_T = C('fbfaf7'); HEAD_B = C('c9cfdc')        # light top -> cool bluish shadow bottom
 
 WHO = {
@@ -57,12 +60,24 @@ def limb(d, pts, w=8.5):
     d.line(pts, INK5, w)
     for q in (pts[0], pts[-1]): d.dot(q[0], q[1], w / 2, INK5)
 
-def arm(d, s, ang, ln, bend):
+def tube(d, pts, w, col):
+    d.line(pts, INK5, w + OL * 1.5)
+    for q in (pts[0], pts[-1]): d.dot(q[0], q[1], (w + OL * 1.5) / 2, INK5)
+    d.line(pts, col, w)
+    for q in (pts[0], pts[-1]): d.dot(q[0], q[1], w / 2, col)
+
+def arm(d, s, ang, ln, bend, col=None):
     r = math.radians(ang); r2 = math.radians(ang + bend)
     e = (s[0] + math.sin(r) * ln * 0.5, s[1] + math.cos(r) * ln * 0.5)
     h = (e[0] + math.sin(r2) * ln * 0.5, e[1] + math.cos(r2) * ln * 0.5)
-    limb(d, [s, e, h], 8.5)
-    d.ell(h[0], h[1], 11, 10, INK5, None, 0)
+    if STYLE['arms'] == 'thick' and col is not None:
+        tube(d, [s, e, h], 19, col)
+        a_ = math.atan2(h[1] - e[1], h[0] - e[0])
+        d.ell(h[0] + math.cos(a_ - 1.2) * 12, h[1] + math.sin(a_ - 1.2) * 12, 7, 6, (250, 250, 248), INK5, 3)
+        d.ell(h[0], h[1], 15, 14, (250, 250, 248), INK5, 4)
+    else:
+        limb(d, [s, e, h], 8.5)
+        d.ell(h[0], h[1], 11, 10, INK5, None, 0)
     return h
 
 def eye5(H, cx, side, E, look, blink):
@@ -140,7 +155,15 @@ def toon5(d, x, y, sc, who='napoleon', emo='neutral', look=None, pose=None, blin
     G = d.sub(Aff(x, y - bob * sc, sc, 0, flip))
     st = math.sin(step) * 30 if step else 0
     # thin stick legs with a slight knee bend, small dark shoes / tall boots
-    for side, ph in ((-1, st), (1, -st)):
+    if STYLE['legs'] == 'thick':
+        pc = PANTS[who]; bc = BOOT[who]
+        for side, ph in ((-1, st), (1, -st)):
+            hx = side * 19; fx = side * 20 + ph; fy = -abs(ph) * 0.3
+            tube(G, [(hx, -150), (fx, -70 + fy * 0.5), (fx, -14 + fy)], 22, pc)
+            G.poly([(fx - 15, -60 + fy), (fx + 15, -60 + fy), (fx + 15, -12 + fy), (fx - 15, -12 + fy)], bc, INK5, OL * 0.7)
+            G.ell(fx + 10, -8 + fy, 27, 13, bc, INK5, OL * 0.8)
+            G.ell(fx + 4, -14 + fy, 10, 3, shade(bc, 1.8), None, 0)
+    for side, ph in (((-1, st), (1, -st)) if STYLE['legs'] != 'thick' else ()):
         hx = side * 16; fx = side * 22 + ph; lift = max(0, -math.cos(step + (0 if side < 0 else math.pi))) * 18 if step else 0
         kx = (hx + fx) / 2 + 10 * knee * (1 + abs(ph) / 30); ky = -82
         limb(G, [(hx, -158), (kx, ky - lift * 0.5), (fx, -8 - lift)], 8.5)
@@ -148,7 +171,7 @@ def toon5(d, x, y, sc, who='napoleon', emo='neutral', look=None, pose=None, blin
             G.line([(lerp(kx, fx, 0.15), lerp(ky, -8 - lift, 0.15) - 6), (fx, -10 - lift)], INK5, 17)
         G.ell(fx + 12, -6 - lift, 20, 9, INK5, None, 0); G.ell(fx + 8, -10 - lift, 7, 2.5, C('5a5468'), None, 0)
     B = G.sub(Aff(0, -150, 1, lean))
-    hR = arm(B, (-34, -118), aR[0], aR[1], elR)
+    hR = arm(B, (-34, -118), aR[0], aR[1], elR, shade(o['coat'], 0.8))
     # bean torso
     bean = [(math.cos(a) * 58 * (1 + 0.08 * math.sin(a)), -78 + math.sin(a) * 86 * (1 if math.sin(a) > 0 else 0.92)) for a in np.linspace(0, 2 * math.pi, 56, endpoint=False)]
     grad_poly(B, bean, shade(o['coat'], 1.12), shade(o['coat'], 0.72), 0.35, None)
@@ -167,7 +190,7 @@ def toon5(d, x, y, sc, who='napoleon', emo='neutral', look=None, pose=None, blin
         for s_ in (-1, 1):
             B.ell(s_ * 40, -152, 22, 10, GOLD, INK5, 3)
             for k in range(5): B.line([(s_ * 40 + (k - 2) * 8, -144), (s_ * 40 + (k - 2) * 9, -128)], C('d9a640'), 3)
-    hL = arm(B, (34, -118), aL[0], aL[1], elL)
+    hL = arm(B, (34, -118), aL[0], aL[1], elL, o['coat'])
     if pz.get('prop'): pz['prop'](B, hL, hR)
     # big round shaded head
     Hh = B.sub(Aff(0, -232, 1, tilt))
