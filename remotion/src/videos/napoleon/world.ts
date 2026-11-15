@@ -9,7 +9,7 @@ import { TONE, CHAR, untone } from "../bridge/shade";
 import { NOINK } from "../bridge/ink";
 import { Pool, Actor, Fx, SU } from "../bridge/cast";
 import { fxContact } from "../bridge/toon";
-import { FPS, SHOTS, SLOT, camAt, lt, ShotDef } from "./story";
+import { FPS, SHOTS, SLOT, camAt, lt, ShotDef, WHEEL_F } from "./story";
 import { stage, Item, MAP_REG, CONQ } from "./stage";
 
 export const loadKit = () => Promise.resolve({});
@@ -106,6 +106,7 @@ export class World {
   private flags: THREE.Mesh[] = [];
   private fires: { x: number; z: number; fl: THREE.Mesh; puffs: THREE.Mesh[] }[] = [];
   private sunCache = new Map<number, THREE.Vector3>();
+  private warmMats: THREE.MeshLambertMaterial[] = [];
 
   constructor() {
     const Rt = this.root;
@@ -217,7 +218,10 @@ export class World {
     const pm = new THREE.Mesh(new THREE.PlaneGeometry(220, 120), new THREE.MeshLambertMaterial({ map: rep(patchTex(), 4, 2), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
     pm.rotation.x = -Math.PI / 2; pm.position.set(40, 0.02, -30); pm.layers.set(NOINK); pm.receiveShadow = true; Rt.add(pm);
     const pf = pm.clone(); pf.position.set(R, 0.02, -15); Rt.add(pf);
-    const tuftM = lam("nTuft", () => ({ map: tuftTex(), alphaTest: 0.5, side: THREE.DoubleSide })), flowM = lam("nFlow", () => ({ map: flowerTex(), alphaTest: 0.5, side: THREE.DoubleSide }));
+    // emissiveMap = own texture: the sunset shots (18-19) add a warm self-glow so side-lit tufts don't go navy (black by default)
+    const tT = tuftTex(), fT = flowerTex();
+    const tuftM = lam("nTuft", () => ({ map: tT, emissiveMap: tT, emissive: "#000000", alphaTest: 0.5, side: THREE.DoubleSide })), flowM = lam("nFlow", () => ({ map: fT, emissiveMap: fT, emissive: "#000000", alphaTest: 0.5, side: THREE.DoubleSide }));
+    this.warmMats = [tuftM, flowM];
     const cross = (x: number, z: number, h: number, m: THREE.Material) => { for (const a of [0, Math.PI / 2]) { const g = new THREE.PlaneGeometry(h, h); g.translate(0, h / 2, 0); g.rotateY(a + r()); b.add(g, m, mtx(x, 0, z)); } };
     const near = [[-4, 12, -6, 10], [4, 18, -4, 7], [20, 40, -3, 9], [26, 40, -1, 7], [38, 82, -1, 11], [-24, -16, -60, -55], [R - 8, R + 12, -3, 12]];
     for (const [x0, x1, z0, z1] of near) {
@@ -317,7 +321,7 @@ export class World {
     let v = this.sunCache.get(id);
     if (v) return v;
     let fx = 0, fz = 0;
-    for (let f = s.a; f < s.b; f += 3) { const c = camAt(id, f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1; fx += x / n; fz += z / n; }
+    for (let f = s.a; f < s.b; f += 3) { const c = s.cam(f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1; fx += x / n; fz += z / n; }
     const n = Math.hypot(fx, fz) || 1; fx /= n; fz /= n;
     const SUN_AZ: Record<number, number> = { 18: 38, 19: 38, 22: 120, 23: 140, 24: 140 };
     // 18-19: sun off to the side + higher so the tree line's long shadows no longer cover the whole field (v3: navy ground)
@@ -361,10 +365,17 @@ export class World {
     // ---- dynamic props ----
     const open = id === 10 ? Math.min(1, Math.max(0, (u - 0.24) / 0.4)) : id > 10 && id < 18 ? 1 : 0;
     this.door.rotation.y = -1.7 * (open < 1 ? open * open * (3 - 2 * open) : 1) - (id === 10 && u > 0.53 ? 0.08 * Math.sin((u - 0.53) * 20) * Math.exp(-(u - 0.53) * 6) : 0);
-    let cx = 64, bounce = 0;
-    if (id === 19) { cx = 64 + 16 * Math.min(1, u / 2.4) ** 1.2; bounce = Math.abs(Math.sin(u * 12)) * 0.05; }
+    let cx = 64, bounce = 0, spin = 0;
+    if (id === 19) {
+      // wheels spin in place for WHEEL_F frames (insert), then the v4 move plays unchanged, just 20 f later
+      const w0 = WHEEL_F / FPS, u2 = Math.max(0, u - w0);
+      cx = 64 + 16 * Math.min(1, u2 / 2.4) ** 1.2; spin = 3.5 * Math.min(u, w0); // 3.5 rad/s: 12 spokes strobed at 7 (flicker_check)
+      bounce = u < w0 ? Math.abs(Math.sin(u * 40)) * 0.02 : Math.abs(Math.sin(u2 * 12)) * 0.05;
+    }
     this.carriage.position.set(cx, bounce, 0.6);
-    for (const w of this.wheels) w.rotation.z = -(cx - 64) / 0.55;
+    for (const w of this.wheels) w.rotation.z = -(cx - 64) / 0.55 - spin;
+    const warm = id === 18 || id === 19 ? 1 : 0;
+    for (const m of this.warmMats) m.emissive.setRGB(0.95 * warm, 0.72 * warm, 0.3 * warm);
     const nConq = id === 2 ? CONQ.filter(([, t0]) => u >= t0).length : id > 2 ? CONQ.length : 0;
     if (nConq !== this.mapN) { (this.map.material as THREE.MeshBasicMaterial).map = mapTex(nConq); (this.map.material as THREE.MeshBasicMaterial).needsUpdate = true; this.mapN = nConq; }
     // ---- cast ----

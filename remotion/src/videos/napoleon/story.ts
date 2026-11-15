@@ -24,12 +24,14 @@ export const SLOT: Record<SetName, number> = { field: 0, map: 400, tent: 800, fa
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
 export type ShotDef = { id: number; a: number; b: number; set: SetName; light: Light; cInf: number; cam: (f: number) => Cam; focus?: V3 };
 const F = (s: number) => Math.round(s * FPS);
+/** hold-shot drift (v4: push x1.5, arc 3 % of the subject distance / s; v5 raised for pacing_check MAD) */
+const HOLD_PUSH = 3.0, HOLD_ARC = 0.12;
 /** a held shot that pushes in toward its look point at `rate` per second (skill: ~4.5 %/s, punch <= 18 %/s) */
 const hold = (a: number, pos: V3, look: V3, rate = 0.045, fov = 40, roll = 0) => (f: number): Cam => {
   // push-in (x1.5 after the v3 pacing check: median MAD 7.2 < 15) + a slow sideways arc so held shots never freeze
-  const t = Math.max(0, (f - a) / FPS), k = Math.min(0.6, rate * 1.5 * t);
+  const t = Math.max(0, (f - a) / FPS), k = Math.min(0.6, rate * HOLD_PUSH * t);
   const d = Math.hypot(look[0] - pos[0], look[2] - pos[2]), side = Math.sin(a * 12.9898) > 0 ? 1 : -1;
-  const arc = side * d * 0.03 * smooth(t / 2.2) * 2.2;
+  const arc = side * d * HOLD_ARC * smooth(t / 2.2) * 2.2;
   const p = lerp3(pos, look, k * 0.5);
   return { pos: [p[0] + arc, p[1], p[2]], look, fov, roll };
 };
@@ -43,6 +45,8 @@ const track = (a: number, b: number, p0: V3, l0: V3, p1: V3, l1: V3, fov = 40) =
   return { pos: lerp3(p0, p1, u), look: lerp3(l0, l1, u), fov, roll: 0 };
 };
 const M = SLOT.map, T = SLOT.tent, R = SLOT.farm;
+/** shot 19 opens on the wheels spinning in place (insert) before the carriage moves */
+export const WHEEL_F = 20;
 // shot boundaries (frames) = the phrase/word starts of the recorded voice (same cut points as preview v1)
 const B = [0, 35, 87, 143, 198, 246, 300, 378, 429, 489, 533, 593, 654, 716, 762, 810, 876, 915, 996, 1068, 1097, 1148, 1203, 1275, TOTAL];
 const S = (i: number, set: SetName, light: Light, cInf: number, cam: (a: number, b: number) => (f: number) => Cam, focus?: V3): ShotDef =>
@@ -84,8 +88,8 @@ export const SHOTS: ShotDef[] = [
   S(16, "field", "day", 11, (a) => hold(a, [32, 1.15, 2.45], [32, 1.08, 0], 0.03)),
   // 18 "The great emperor retreated to his carriage…" run, tracking
   S(17, "field", "golden", 4, (a, b) => track(a, b, [41, 1.05, 8.5], [41, 0.9, 1], [60, 1.05, 8.5], [61, 0.9, 1])),
-  // 19 "…and the rabbits chased him there too." carriage flees, tracking
-  S(18, "field", "golden", 4, (a, b) => track(a, b, [63, 1.1, 9.5], [64, 0.9, 0], [76, 1.1, 9.5], [77, 0.9, 0])),
+  // 19 "…and the rabbits chased him there too." carriage flees, tracking (starts after the wheel-spin insert, same speed)
+  S(18, "field", "golden", 4, (a, b) => track(a + WHEEL_F, b + WHEEL_F, [63, 1.1, 9.5], [64, 0.9, 0], [76, 1.1, 9.5], [77, 0.9, 0])),
   // 20 "Why?" one bunny, head tilt
   S(19, "farm", "day", 13, (a) => hold(a, [R + 3.05, 0.33, 4.0], [R + 3, 0.22, 3], 0.05)),
   // 21 "They weren't wild rabbits." a scruffy wild hare at the forest edge
@@ -98,9 +102,28 @@ export const SHOTS: ShotDef[] = [
   S(23, "farm", "golden", 9, (a, b) => { const h = hold(a, [R + 6, 0.62, 6.6], [R + 6, 0.5, 3.6], 0.05); return (f: number) => {
     const c = h(f), k = back((f - (b - 20)) / 6) * 0.22; return { ...c, pos: lerp3(c.pos, c.look, k) }; }; }),
 ];
+// Quick insert close-ups (< 1 s, hard cut in/out) on key words, inside their shot: same set, light and staging.
+// v4 pacing_check median MAD was below 15; these add a cut + a new framing on the words the script leans on.
+export type Insert = { key: string; shot: number; a: number; b: number; cInf: number; cam: (f: number) => Cam };
+const ins = (key: string, shot: number, a: number, b: number, pos: V3, look: V3, cInf = 12, rate = 0.1): Insert => ({ key, shot, a, b, cInf, cam: hold(a, pos, look, rate) });
+export const INSERTS: Insert[] = [
+  // "treaty," wax seal stamped beside the signature (to the cut)
+  ins("seal", 6, C(19), B[6], [T + 0.16, 1.1, 0.66], [T + 0.16, 0.86, 0.13], 13),
+  // "hundreds" one crate, bunnies behind the bars
+  ins("hundreds", 9, C(35), C(35) + 21, [38.5, 0.32, -0.7], [38.5, 0.3, -2], 12),
+  // "guns." raised muskets (to the cut)
+  ins("guns", 11, C(45), B[11], [24.55, 1.02, 1.6], [24.55, 0.98, -0.45], 12),
+  // shot 19 opens on the near rear wheel spinning in place, dust kicking up
+  ins("wheel", 19, B[18], B[18] + WHEEL_F, [63.3, 0.62, 3.6], [63.1, 0.62, 1.4], 12, 0.08),
+  // "farm" a carrot dangles over a bunny (to the cut)
+  ins("carrot", 22, C(98), B[22], [R - 0.33, 0.3, 1.55], [R - 0.37, 0.25, 0.55], 13),
+  // "dinner" the dinner bell rings, cut back for the final punch-in
+  ins("bell", 24, C(113) - 2, B[24] - 20, [R + 6.9, 1.03, 5.3], [R + 6.9, 1.0, 4.4], 13),
+];
+export const insertAt = (f: number) => INSERTS.find((i) => f >= i.a && f < i.b);
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 export const layersAt = (f: number): { id: number; alpha: number }[] => [{ id: shotAt(f).id, alpha: 1 }];
-export const camAt = (id: number, f: number): Cam => SHOTS[id - 1].cam(f);
-export const dofAt = (f: number) => { const s = shotAt(f); return { cInf: s.cInf, focus: s.focus ? (_f: number) => s.focus as V3 : undefined }; };
+export const camAt = (id: number, f: number): Cam => { const i = insertAt(f); return i && i.shot === id ? i.cam(f) : SHOTS[id - 1].cam(f); };
+export const dofAt = (f: number) => { const s = shotAt(f), i = insertAt(f); return { cInf: i ? i.cInf : s.cInf, focus: !i && s.focus ? (_f: number) => s.focus as V3 : undefined }; };
 /** seconds since the shot started */
 export const lt = (id: number, f: number) => (f - SHOTS[id - 1].a) / FPS;

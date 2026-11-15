@@ -1,7 +1,45 @@
 // Who stands where, doing what, in every shot (pure function of shot id + frame). Acting without lip sync:
 // expressions + snappy poses change on the voice words; blinks every 0.5-2.3 s.
-import { SLOT, SHOTS } from "./story";
-import { drawToon, drawBunny, drawBubble, drawHatCard, drawQuill, drawSignature, musket, stick, clipboard, carrotProp, Who, Emo, Pose, BunnyOpts, Bunny } from "./chars";
+import { SLOT, SHOTS, INSERTS, WHEEL_F, FPS } from "./story";
+import { drawToon, drawBunny, drawBubble, drawHatCard, drawQuill, drawSignature, musket, stick, clipboard, carrotProp, carrotAt, Dw, Who, Emo, Pose, BunnyOpts, Bunny } from "./chars";
+
+// ---------- insert props (drawn on cards) ----------
+const insU = (key: string, f: number) => { const i = INSERTS.find((x) => x.key === key)!; return { on: f >= i.a && f < i.b, u: (f - i.a) / FPS }; };
+/** wooden-handled brass seal stamp, base at the bottom of a 256 x 512 card */
+const drawStamp = (g: CanvasRenderingContext2D) => {
+  const d = new Dw(g);
+  d.poly([[108, 150], [148, 150], [152, 390], [104, 390]], "#8a5a32", 6);
+  d.ell(128, 110, 62, 52, "#9a6a3c", 6); d.ell(110, 92, 20, 12, "#c08a54", 0);
+  d.poly([[70, 390], [186, 390], [196, 470], [60, 470]], "#d9a640", 6);
+  d.poly([[78, 400], [100, 400], [92, 462], [70, 462]], "#f0cd78", 0);
+};
+/** red wax seal with an N, flat 512 x 512 card */
+const drawWax = (g: CanvasRenderingContext2D) => {
+  const d = new Dw(g).sub(256, 256);
+  const blob: [number, number][] = Array.from({ length: 48 }, (_, i) => { const a = (i / 48) * Math.PI * 2, r = 200 + 18 * Math.sin(a * 7) + 10 * Math.sin(a * 3 + 1); return [Math.cos(a) * r, Math.sin(a) * r]; });
+  d.poly(blob, "#a8202a", 7); d.ell(0, 0, 140, 140, "#8e1822", 6); d.ell(-50, -60, 60, 26, "#c8424a", 0, -0.6);
+  g.save(); g.font = "900 190px Poppins, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#5e0c14"; g.fillText("N", 256, 266); g.restore();
+};
+/** soft dust puff, 256 x 256 */
+const drawDust = (g: CanvasRenderingContext2D) => {
+  const gr = g.createRadialGradient(128, 128, 8, 128, 128, 124); gr.addColorStop(0, "rgba(240,232,214,0.9)"); gr.addColorStop(0.6, "rgba(232,222,200,0.45)"); gr.addColorStop(1, "rgba(232,222,200,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+};
+/** carrot on a string from the top of a 256 x 512 card */
+const drawCarrotString = (g: CanvasRenderingContext2D) => {
+  const d = new Dw(g); d.line([[128, 0], [128, 170]], "#e9e2cf", 5);
+  carrotAt(d, 128, 280, 1.4, 0);
+};
+/** brass dinner bell hanging from its top-centre (256 x 384 card), ring lines either side */
+const drawBell = (g: CanvasRenderingContext2D) => {
+  const d = new Dw(g);
+  d.ell(128, 30, 20, 20, null, 7);
+  d.poly([[96, 62], [160, 62], [176, 120], [196, 250], [226, 300], [30, 300], [60, 250], [80, 120]], "#d9a640", 7);
+  d.poly([[100, 80], [118, 80], [104, 250], [84, 250]], "#f0cd78", 0);
+  d.ell(128, 304, 100, 18, "#b8862e", 7); d.ell(128, 338, 22, 22, "#6a4a20", 6);
+  for (const s of [-1, 1]) for (let k = 0; k < 2; k++) d.line([[128 + s * (112 + k * 18), 150 + k * 30], [128 + s * (124 + k * 18), 200 + k * 30]], "#2e1a23", 6);
+};
+const wb = (b: number, s = 1.7) => { const u = Math.min(1, Math.max(0, b)) - 1; return u * u * ((s + 1) * u + s) + 1; };
 
 export type Item = {
   kind: "toon" | "bunny" | "fx"; key: string; draw: (g: CanvasRenderingContext2D) => void; x: number; y: number; z: number;
@@ -53,7 +91,7 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
   U = u;
   const B = (i: number) => blinkAt(u, i);
   switch (id) {
-    case 1: out.push(toon("napoleon", u < 0.75 ? "proud" : "smug", 0, 0, { aL: [-40, 80], elL: -62, tilt: -0.05, bob: Math.sin(u * 2.2) * 2 }, { blink: B(1) })); break;
+    case 1: out.push(toon("napoleon", u < 0.75 ? "proud" : "smug", 0, 0, { aL: [-40, 80], elL: -62, tilt: -0.05, bob: Math.abs(Math.sin(u * 5)) * 6 }, { blink: B(1) })); break;
     case 2: if (u > 1.27) {
       const k = clamp((u - 1.27) / 0.12), s = 1.8 - 0.8 * k * k;
       out.push({ kind: "fx", key: "hatpin", cw: 512, ch: 320, draw: drawHatCard, x: M - 0.216, y: 1.13 + (1 - k) * 0.25, z: -0.47, w: 0.3 * s, h: 0.19 * s });
@@ -77,9 +115,18 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       break;
     }
     case 6: {
+      // handshake raised to chest height so it reads above the table top (v4: hands hidden at the table edge)
       const sh = u > 0.3 ? Math.sin(u * 22) * 9 : 0;
-      out.push(toon("napoleon", u > 0.3 ? "happy" : "smug", T - 0.48, -0.8, { aL: [84 + sh, 104], aR: [-20, 120], lean: 0.08 }, { blink: B(6) }));
-      out.push(toon("tsar", "happy", T + 0.5, -0.8, { aL: [84 - sh, 104], aR: [-20, 120], lean: 0.08 }, { mirror: true, blink: B(7) }));
+      out.push(toon("napoleon", u > 0.3 ? "happy" : "smug", T - 0.43, -0.8, { aL: [138 + sh, 104], elL: -48, aR: [-20, 120], lean: 0.08 }, { blink: B(6) }));
+      out.push(toon("tsar", "happy", T + 0.45, -0.8, { aL: [138 - sh, 104], elL: -48, aR: [-20, 120], lean: 0.08 }, { mirror: true, blink: B(7) }));
+      // seal insert: the stamp drops, hits at 0.2 s, lifts; the wax stays
+      const si = insU("seal", f);
+      if (si.on) {
+        const lift = si.u < 0.2 ? 0.2 * (1 - si.u / 0.2) ** 2 : si.u < 0.38 ? 0 : 0.2 * Math.min(1, (si.u - 0.38) / 0.2) ** 2;
+        out.push({ kind: "fx", key: "stamp", cw: 256, ch: 512, draw: drawStamp, x: T + 0.16, y: 0.862 + 0.08 + lift, z: 0.13, w: 0.08, h: 0.16 });
+      }
+      if (si.on && si.u >= 0.2) { const p = 0.7 + 0.3 * wb((si.u - 0.2) / 0.12); out.push({ kind: "fx", key: "wax", cw: 512, ch: 512, draw: drawWax, x: T + 0.16, y: 0.861, z: 0.13, w: 0.085 * p, h: 0.085 * p, flat: true }); }
+      if (!si.on && u > 1.2) out.push({ kind: "fx", key: "wax", cw: 512, ch: 512, draw: drawWax, x: T + 0.16, y: 0.861, z: 0.13, w: 0.085, h: 0.085, flat: true });
       break;
     }
     case 7: {
@@ -94,7 +141,7 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
     }
     case 8: {
       const sal = u > 0.25 && u < 1.2 ? 1 : 0;
-      out.push(toon("berthier", "proud", 16, 1, { aL: [70, 110], elL: 60, prop: "clip", aR: sal ? [-160, 70] : [-20, 120], elR: sal ? -70 : -10 }, { blink: B(9) }));
+      out.push(toon("berthier", "proud", 16, 1, { aL: [70, 110], elL: 60, prop: "clip", aR: sal ? [-160, 70] : [-20, 120], elR: sal ? -70 : -10, bob: u > 1.2 ? hopPh(u, 3, 0) * 6 : 0, tilt: u > 1.2 ? 0.08 * Math.sin(u * 9) : 0 }, { blink: B(9) }));
       break;
     }
     case 9: {
@@ -102,6 +149,9 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
         const cx = 36 + i * 1.25 + (row % 2) * 0.6, cz = -2 - row * 1.0, k = row * 7 + i;
         for (const dx of [-0.2, 0.2]) out.push(bunny({ col: COLS[(k + (dx > 0 ? 3 : 0)) % 6], view: "front", hop: hopPh(u, 1.6, hh(k + dx)) * 0.15, ear: Math.sin(u * 6 + k) * 0.3, blink: B(k * 2 + (dx > 0 ? 1 : 0)) }, cx + dx, cz + 0.05, { y: 0.1, scale: 0.72, noShadow: true }));
       }
+      // "hundreds" insert: the hero crate is crammed, extra bunnies stacked and pressed to the bars
+      if (insU("hundreds", f).on) ([[-0.36, 0, -1.78, 0], [0, 0, -1.74, 1], [0.36, 0, -1.78, 2], [-0.18, 0.27, -1.86, 3], [0.18, 0.27, -1.86, 4], [0, 0.42, -2.0, 5]] as const)
+        .forEach(([dx, y, z, k]) => out.push(bunny({ col: COLS[(k + 1) % 6], view: "front", face: k % 2 ? "wide" : "open", ear: 0.2 * Math.sin(u * 8 + k), blink: B(90 + k) }, 38.5 + dx, z, { y: 0.06 + y, scale: 0.52, noShadow: true })));
       break;
     }
     case 10: {
@@ -153,7 +203,7 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
     case 15: {
       out.push(toon("napoleon", "worried", 32, 0, {}, { look: [0, -1], blink: B(50) }));
       const k = back(u / 0.25);
-      out.push(bunny({ col: "cream", view: "front", face: "happy", tilt: 0.1 * Math.sin(u * 4) }, 32, 0.02, { y: 1.62 + (1 - k) * 0.4, scale: 0.85, noShadow: true }));
+      out.push(bunny({ col: "cream", view: "front", face: "happy", tilt: 0.1 * Math.sin(u * 4) }, 32, 0.02, { y: 1.62 + (1 - k) * 0.4 + (u > 0.7 ? hopPh(u, 2.5, 0) * 0.1 : 0), scale: 0.85, noShadow: true }));
       out.push(bunny({ col: "grey", face: "open", ear: 0.1 * Math.sin(u * 8) }, 32.4, 0.08, { y: 0.98, scale: 0.7, mirror: true, noShadow: true }));
       break;
     }
@@ -188,6 +238,12 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       const cx = env.carriageX;
       out.push(toon("napoleon", "scared", cx - 0.4, 0.6, { aL: [150, 110], aR: [-20, 110] }, { y: 0.78 + env.carriageY, noShadow: true }));
       out.push(bunny({ col: "spot", face: "happy", mouth: "grin" }, cx - 1.1, 0.55, { y: 1.56 + env.carriageY, noShadow: true, scale: 0.8 }));
+      // wheel-spin insert: dust kicking back off the near rear wheel
+      const w0 = WHEEL_F / FPS;
+      if (u < w0 + 0.3) for (let k = 0; k < 4; k++) {
+        const ph = (u * 2.2 + k / 4) % 1, a = Math.min(1, (w0 + 0.3 - u) / 0.3);
+        out.push({ kind: "fx", key: "dust", cw: 256, ch: 256, draw: drawDust, soft: true, x: cx - 1.25 - ph * 0.7, y: 0.1 + ph * 0.3, z: 1.5 + k * 0.03, w: (0.25 + ph * 0.45) * a, h: (0.25 + ph * 0.45) * a });
+      }
       for (let i = 0; i < 18; i++) {
         const ph = hopPh(u, 4, hh(i, 51));
         out.push(bunny({ col: COLS[i % 6], hop: ph * 0.6, stretch: ph * 0.7, face: "happy", mouth: "grin" }, cx - 2.2 - hh(i, 52) * 7, 0.6 + hh(i, 53) * 2.4));
@@ -200,7 +256,10 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
     case 22: {
       out.push(toon("farmer", "happy", R + 0.55, 0.3, { aL: [70 + 8 * Math.sin(u * 6), 100], elL: 20, prop: "carrot" }, { mirror: true, blink: B(70) }));
       for (let i = 0; i < 5; i++) out.push(bunny({ col: COLS[i], view: "front", face: "happy", hop: hopPh(u, 2, hh(i, 61)) * 0.12 }, R - 1.1 + i * 0.5, -1.05, { y: 0.12, scale: 0.75, noShadow: true }));
-      for (let i = 0; i < 4; i++) out.push(bunny({ col: COLS[(i + 2) % 6], face: "happy", look: [1, -0.5] }, R - 0.7 + i * 0.32, 0.2 + (i % 2) * 0.35, { scale: 0.85 }));
+      // carrot insert: bunny 1 looks up and stretches toward a carrot dangling on a string
+      const ci = insU("carrot", f);
+      for (let i = 0; i < 4; i++) out.push(bunny({ col: COLS[(i + 2) % 6], face: "happy", look: ci.on && i === 1 ? [0.2, -1] : [1, -0.5], stretch: ci.on && i === 1 ? 0.25 + 0.1 * Math.sin(ci.u * 9) : 0 }, R - 0.7 + i * 0.32, 0.2 + (i % 2) * 0.35, { scale: 0.85 }));
+      if (ci.on) out.push({ kind: "fx", key: "carrotStr", cw: 256, ch: 512, draw: drawCarrotString, x: R - 0.34 + 0.03 * Math.sin(ci.u * 5), y: 0.47 + 0.02 * Math.sin(ci.u * 7), z: 0.62, w: 0.16, h: 0.32, rot: 0.12 * Math.sin(ci.u * 5) });
       break;
     }
     case 23: {
@@ -216,6 +275,13 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       const jump = back((u - 1.42) / 0.18) * (1 - clamp((u - 1.75) / 0.3)) * 0.18;
       for (let i = 0; i < 5; i++) out.push(bunny({ col: COLS[i], view: "front", face: "happy", mouth: "grin", napkin: true, hop: hopPh(u, 4.2, i * 0.2) * 0.55, stretch: hopPh(u, 4.2, i * 0.2) * 0.3, ear: 0.15 + 0.2 * Math.sin(u * 9 + i) }, R + 5.35 + i * 0.32, 3.55 + (i % 2) * 0.3, { y: jump }));
       if (u > 0.15) { const p = back((u - 0.15) / 0.3); out.push({ kind: "fx", key: "bub|dinner", cw: 512, ch: 512, draw: (g) => drawBubble(g, "dinner"), x: R + 6.0, y: 0.98, z: 3.4, w: 0.7 * p, h: 0.7 * p }); }
+      // dinner-bell insert: bell swings from its hook (pivot at the card top)
+      const bi = insU("bell", f);
+      if (bi.on) {
+        const rot = 0.45 * Math.sin(bi.u * 16) * Math.exp(-bi.u * 0.8), h = 0.3, px = R + 6.9, py = 1.2;
+        out.push({ kind: "fx", key: "bell", cw: 256, ch: 384, draw: drawBell, x: px + Math.sin(rot) * h / 2, y: py - Math.cos(rot) * h / 2, z: 4.4, w: h * 256 / 384, h, rot });
+        out.push({ kind: "fx", key: "bellHook", cw: 256, ch: 64, draw: (g) => new Dw(g).poly([[0, 10], [256, 10], [256, 54], [0, 54]], "#8a5a32", 6), x: px, y: py + 0.03, z: 4.41, w: 0.36, h: 0.06 });
+      }
       break;
     }
   }
