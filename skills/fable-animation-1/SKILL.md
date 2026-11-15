@@ -100,6 +100,9 @@ Reference reports are for look and pacing only. Story, characters, lines and sho
 - **Laptop RTX 3050 (Windows):** much faster (360p ~10-15 min, 1080p ~45-60 min). Cloud chats can NOT reach the laptop for this account (Remote Control folders show "not available");
   use a **local Claude Code session on the laptop** (Claude desktop app -> Code -> local session in the project folder): `git pull`, then
   `npx remotion render <Comp> out\x.mp4 --scale=0.3333333333333333 --concurrency=2 --gl=angle`. Full guide: repo `remotion/LAPTOP_RENDER.md`.
+- **Laptop -> Claude hand-back (works, Nov 2026):** the laptop chat renders 1080p (`--crf=18`, ~58 MB for 44 s), then makes a check copy
+  `npx remotion ffmpeg -i out\x.mp4 -vf scale=540:960 -crf 26 -c:a aac -b:a 128k out\check.mp4` (~7 MB) and uploads it to Drive > Animation.
+  The cloud chat downloads the check copy (< 10 MB limit) and runs the 4 QA scripts on it. The user drags the full file to Drive for posting.
 - Project lives in GitHub `fableversecreative/Animation-project-` (branch `claude/greeting-dbsr4p`, folder `remotion/`). Build in the cloud, push, render on either side.
 - Tooling in a fresh cloud box: Node 22 + ffmpeg present; `npm install` in the project (~30 s, 372 MB), `pip install scipy fonttools brotli` for the audio templates,
   Poppins ExtraBold/Black from `@fontsource/poppins` (convert woff2 -> ttf with fontTools for Python captions). Whisper model downloads are blocked:
