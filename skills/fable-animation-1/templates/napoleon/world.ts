@@ -17,7 +17,7 @@ const M = SLOT.map, T = SLOT.tent, R = SLOT.farm;
 // project light presets: bridge rig, golden shadows lifted (the ground read navy), fog pushed back
 const NL: Record<"day" | "golden", LightPreset> = {
   day: { ...LIGHTS.day, el: 42, fogNear: 60, fogFar: 520, lit: [1.5, 1.44, 1.3], shade: [0.42, 0.4, 0.5], lift: [0.08, 0.09, 0.14] },
-  golden: { ...LIGHTS.golden, el: 13, fogNear: 70, fogFar: 520, lit: [1.45, 0.86, 0.5], shade: [0.42, 0.33, 0.44], lift: [0.12, 0.09, 0.15], charTint: [1.0, 0.86, 0.72] },
+  golden: { ...LIGHTS.golden, el: 17, fogNear: 70, fogFar: 520, lit: [1.5, 0.95, 0.58], shade: [0.6, 0.47, 0.5], lift: [0.17, 0.13, 0.13], charTint: [1.0, 0.86, 0.72] },
 };
 const tuftTex = () => ctex("tuft", 256, 256, (g, r) => {
   for (let i = 0; i < 34; i++) {
@@ -319,8 +319,10 @@ export class World {
     let fx = 0, fz = 0;
     for (let f = s.a; f < s.b; f += 3) { const c = camAt(id, f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1; fx += x / n; fz += z / n; }
     const n = Math.hypot(fx, fz) || 1; fx /= n; fz /= n;
-    const SUN_AZ: Record<number, number> = { 22: 120, 23: 140, 24: 140 };
-    const az = THREE.MathUtils.degToRad(SUN_AZ[id] ?? L.az), el = THREE.MathUtils.degToRad(L.el);
+    const SUN_AZ: Record<number, number> = { 18: 38, 19: 38, 22: 120, 23: 140, 24: 140 };
+    // 18-19: sun off to the side + higher so the tree line's long shadows no longer cover the whole field (v3: navy ground)
+    const SUN_EL: Record<number, number> = { 18: 24, 19: 24 };
+    const az = THREE.MathUtils.degToRad(SUN_AZ[id] ?? L.az), el = THREE.MathUtils.degToRad(SUN_EL[id] ?? L.el);
     const hx = fx * Math.cos(az) - fz * Math.sin(az), hz = fz * Math.cos(az) + fx * Math.sin(az);
     v = new THREE.Vector3(hx * Math.cos(el), Math.sin(el), hz * Math.cos(el)).normalize();
     this.sunCache.set(id, v); return v;
@@ -357,7 +359,7 @@ export class World {
       fr.puffs.forEach((m, k) => { const uu = (t * 0.3 + k / 5) % 1, sz = 0.35 + uu * 1.1; m.position.set(fr.x - uu * 0.8, 0.9 + uu * 2.6, fr.z); m.scale.set(sz, sz, 1); m.quaternion.copy(cam.quaternion); (m.material as THREE.MeshBasicMaterial).opacity = 0.32 * (1 - uu); });
     }
     // ---- dynamic props ----
-    const open = id === 10 ? Math.min(1, Math.max(0, (u - 0.28) / 0.25)) : id > 10 && id < 18 ? 1 : 0;
+    const open = id === 10 ? Math.min(1, Math.max(0, (u - 0.24) / 0.4)) : id > 10 && id < 18 ? 1 : 0;
     this.door.rotation.y = -1.7 * (open < 1 ? open * open * (3 - 2 * open) : 1) - (id === 10 && u > 0.53 ? 0.08 * Math.sin((u - 0.53) * 20) * Math.exp(-(u - 0.53) * 6) : 0);
     let cx = 64, bounce = 0;
     if (id === 19) { cx = 64 + 16 * Math.min(1, u / 2.4) ** 1.2; bounce = Math.abs(Math.sin(u * 12)) * 0.05; }

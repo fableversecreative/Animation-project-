@@ -10,6 +10,7 @@ export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export const smooth = (x: number) => { const u = clamp01(x); return u * u * (3 - 2 * u); };
 export const glide = (u: number) => { const x = clamp01(u); return x * x * x * (x * (6 * x - 15) + 10); };
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const back = (x: number, s = 1.7) => { const u = clamp01(x) - 1; return u * u * ((s + 1) * u + s) + 1; };
 export const lerp3 = (a: V3, b: V3, t: number): V3 => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
 /** words: [start s, end s, word] */
@@ -25,8 +26,12 @@ export type ShotDef = { id: number; a: number; b: number; set: SetName; light: L
 const F = (s: number) => Math.round(s * FPS);
 /** a held shot that pushes in toward its look point at `rate` per second (skill: ~4.5 %/s, punch <= 18 %/s) */
 const hold = (a: number, pos: V3, look: V3, rate = 0.045, fov = 40, roll = 0) => (f: number): Cam => {
-  const t = Math.max(0, (f - a) / FPS), k = Math.min(0.6, rate * t);
-  return { pos: lerp3(pos, look, k * 0.5), look, fov, roll };
+  // push-in (x1.5 after the v3 pacing check: median MAD 7.2 < 15) + a slow sideways arc so held shots never freeze
+  const t = Math.max(0, (f - a) / FPS), k = Math.min(0.6, rate * 1.5 * t);
+  const d = Math.hypot(look[0] - pos[0], look[2] - pos[2]), side = Math.sin(a * 12.9898) > 0 ? 1 : -1;
+  const arc = side * d * 0.03 * smooth(t / 2.2) * 2.2;
+  const p = lerp3(pos, look, k * 0.5);
+  return { pos: [p[0] + arc, p[1], p[2]], look, fov, roll };
 };
 /** a glide from one framing to another over [g0, g0+dur] frames (smootherstep), with a slow push after */
 const move = (a: number, p0: V3, l0: V3, p1: V3, l1: V3, g0: number, dur = 26, fov = 40) => (f: number): Cam => {
@@ -68,7 +73,7 @@ export const SHOTS: ShotDef[] = [
   // 12 "And the rabbits didn't run away." rabbits sit, Napoleon confused behind
   S(11, "field", "day", 6, (a) => hold(a, [30, 0.9, 7.6], [30, 0.6, 0], 0.04)),
   // 13 "They ran straight at Napoleon!" side tracking charge
-  S(12, "field", "day", 4, (a, b) => track(a, b, [28.5, 0.85, 4.4], [29.5, 0.55, 0], [31, 0.85, 4.4], [31.8, 0.6, 0])),
+  S(12, "field", "day", 4, (a, b) => track(a, b, [30.1, 0.85, 4.4], [31.15, 0.62, 0], [30.85, 0.85, 4.2], [31.75, 0.66, 0])),
   // 14 "Hundreds of them swarmed…" swarm, arms up
   S(13, "field", "day", 7, (a) => hold(a, [32, 1.1, 3.3], [32, 1.0, 0], 0.08)),
   // 15 "…climbed up his legs." close-up, bunny on the hat
@@ -90,7 +95,8 @@ export const SHOTS: ShotDef[] = [
   // 23 "And when they saw a man walking toward them…" bunny-eye view, Napoleon approaches
   S(22, "farm", "golden", 6, (a) => hold(a, [R + 6, 0.32, 10.2], [R + 6, 0.62, 0], 0.03)),
   // 24 "…they thought it was dinner time." napkins on, dinner bell
-  S(23, "farm", "golden", 9, (a) => hold(a, [R + 6, 0.62, 6.6], [R + 6, 0.5, 3.6], 0.05)),
+  S(23, "farm", "golden", 9, (a, b) => { const h = hold(a, [R + 6, 0.62, 6.6], [R + 6, 0.5, 3.6], 0.05); return (f: number) => {
+    const c = h(f), k = back((f - (b - 20)) / 6) * 0.22; return { ...c, pos: lerp3(c.pos, c.look, k) }; }; }),
 ];
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 export const layersAt = (f: number): { id: number; alpha: number }[] => [{ id: shotAt(f).id, alpha: 1 }];

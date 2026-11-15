@@ -29,13 +29,19 @@ const blinkAt = (u: number, seed: number) => { const p = 1.1 + hh(seed) * 1.2, x
 type PoseK = { aL?: [number, number]; aR?: [number, number]; elL?: number; elR?: number; lean?: number; tilt?: number; bob?: number; step?: number; prop?: string };
 const PROPS: Record<string, Pose["prop"]> = { musket, clip: clipboard, carrot: carrotProp, stickA: stick(-0.5), stickB: stick(-1.6), stickC: stick(0.4) };
 const qp = (p: PoseK) => JSON.stringify(p, (_k, v) => (typeof v === "number" ? q(v, 4) : v));
-const toon = (who: Who, emo: Emo, x: number, z: number, p: PoseK = {}, o: { blink?: boolean; mirror?: boolean; y?: number; look?: [number, number]; noShadow?: boolean; scale?: number } = {}): Item => {
+let U = 0; // seconds into the current shot (set by stage) - drives idle life
+const toon = (who: Who, emo: Emo, x: number, z: number, p0: PoseK = {}, o: { blink?: boolean; mirror?: boolean; y?: number; look?: [number, number]; noShadow?: boolean; scale?: number } = {}): Item => {
+  // idle life: breathing sway, head bob, arms drifting (the v3 preview held faces still for ~2 s)
+  const sd = x * 3.7 + z * 1.3, w = U * 2.6 + sd;
+  const p: PoseK = { ...p0, lean: (p0.lean ?? 0) + 0.035 * Math.sin(w), tilt: (p0.tilt ?? 0) + 0.05 * Math.sin(U * 1.9 + sd * 2),
+    aL: [(p0.aL ?? [20, 120])[0] + 7 * Math.sin(w + 1), (p0.aL ?? [20, 120])[1]], aR: [(p0.aR ?? [-20, 120])[0] - 7 * Math.sin(w + 2), (p0.aR ?? [-20, 120])[1]] };
   const pose: Pose = { ...p, prop: p.prop ? PROPS[p.prop] : undefined } as Pose;
   return { kind: "toon", key: `T|${who}|${emo}|${qp(p)}|${o.blink ? 1 : 0}|${o.look ? o.look.map((v) => q(v)).join(",") : ""}`,
     draw: (g) => drawToon(g, who, emo, pose, !!o.blink, 1, o.look), x, y: o.y ?? 0, z, mirror: o.mirror, noShadow: o.noShadow, scale: o.scale };
 };
 const bunny = (b: BunnyOpts, x: number, z: number, o: { mirror?: boolean; y?: number; scale?: number; noShadow?: boolean } = {}): Item => {
-  const bb = { ...b, hop: q(b.hop ?? 0), stretch: q(b.stretch ?? 0), ear: q(b.ear ?? 0, 10), tilt: q(b.tilt ?? 0, 10) };
+  const sd = x * 5.1 + z * 2.3, tw = Math.max(0, Math.sin(U * 3.1 + sd)) ** 6; // ear twitches + nose bob
+  const bb = { ...b, hop: q((b.hop ?? 0) + 0.05 * Math.abs(Math.sin(U * 4.2 + sd)), 40), stretch: q(b.stretch ?? 0), ear: q((b.ear ?? 0) + 0.35 * tw, 30), tilt: q((b.tilt ?? 0) + 0.08 * Math.sin(U * 1.7 + sd), 40) };
   return { kind: "bunny", key: `B|${JSON.stringify(bb)}`, draw: (g) => drawBunny(g, bb), x, y: o.y ?? 0, z, mirror: o.mirror, scale: o.scale, noShadow: o.noShadow };
 };
 const COLS: Bunny[] = ["white", "brown", "grey", "cream", "spot", "black"];
@@ -44,6 +50,7 @@ const R = SLOT.farm, T = SLOT.tent, M = SLOT.map;
 
 export const stage = (id: number, f: number, u: number, env: { carriageX: number; carriageY: number }): Item[] => {
   const out: Item[] = [];
+  U = u;
   const B = (i: number) => blinkAt(u, i);
   switch (id) {
     case 1: out.push(toon("napoleon", u < 0.75 ? "proud" : "smug", 0, 0, { aL: [-40, 80], elL: -62, tilt: -0.05, bob: Math.sin(u * 2.2) * 2 }, { blink: B(1) })); break;
@@ -70,7 +77,7 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       break;
     }
     case 6: {
-      const sh = u > 0.3 && u < 1.3 ? Math.sin(u * 22) * 6 : 0;
+      const sh = u > 0.3 ? Math.sin(u * 22) * 9 : 0;
       out.push(toon("napoleon", u > 0.3 ? "happy" : "smug", T - 0.48, -0.8, { aL: [84 + sh, 104], aR: [-20, 120], lean: 0.08 }, { blink: B(6) }));
       out.push(toon("tsar", "happy", T + 0.5, -0.8, { aL: [84 - sh, 104], aR: [-20, 120], lean: 0.08 }, { mirror: true, blink: B(7) }));
       break;
@@ -111,10 +118,12 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       break;
     }
     case 12: {
-      out.push(toon("napoleon", "confused", 30, -1.5, { aL: [100, 100], aR: [72, 70], prop: "musket", tilt: u > 0.9 ? 0.12 : 0 }, { blink: B(34) }));
+      const scr = u > 0.8 ? 1 : 0;
+      out.push(toon("napoleon", "confused", 30, -1.5, scr ? { aL: [100, 100], aR: [-165 + 12 * Math.sin(u * 22), 60], elR: -95, prop: "musket", tilt: 0.12 } : { aL: [100, 100], aR: [72, 70], prop: "musket" }, { blink: B(34) }));
       for (let i = 0; i < 14; i++) {
-        const x = 28.9 + hh(i, 1) * 2.2, z = 2.2 + hh(i, 2) * 3.2;
-        out.push(bunny({ col: COLS[i % 6], view: i % 3 ? "side" : "front", face: "open", look: u < 0.9 ? [-1, -0.5] : [1, -0.5], ear: 0.15 * Math.sin(u * 5 + i), blink: B(40 + i) }, x, z, { mirror: hh(i, 5) > 0.5 }));
+        const x = 28.9 + hh(i, 1) * 2.2, z = 2.2 + hh(i, 2) * 3.2, turn = u < 0.5 + hh(i, 3) * 0.3 ? -1 : u < 1.1 + hh(i, 4) * 0.3 ? 1 : 0;
+        const hp = i % 5 === 1 ? hopPh(u, 2.4, hh(i)) * 0.25 : 0;
+        out.push(bunny({ col: COLS[i % 6], view: i % 3 ? "side" : "front", face: "open", look: [turn, -0.5], hop: hp, ear: 0.15 * Math.sin(u * 5 + i), blink: B(40 + i) }, x, z, { mirror: hh(i, 5) > 0.5 }));
       }
       break;
     }
@@ -186,7 +195,8 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       break;
     }
     case 20: out.push(bunny({ col: "white", view: "front", face: "open", tilt: back(u / 0.15) * 0.3, look: [-0.5, -0.6], ear: 0.15 }, R + 3, 3)); break;
-    case 21: out.push(bunny({ col: "wild", face: "angry", mouth: "flat", ear: 0.25, look: [0.5, 0] }, -20, -58, { scale: 1.1 })); break;
+    case 21: { const st = u > 0.9 && u < 1.25 ? hopPh(u, 6, 0) * 0.18 : 0;
+      out.push(bunny({ col: "wild", face: "angry", mouth: "flat", ear: 0.25 + 0.3 * Math.max(0, Math.sin(u * 7)) ** 4, look: [u < 0.6 ? 0.5 : -0.4, 0], hop: st, tilt: 0.12 * Math.sin(u * 3) }, -20, -58, { scale: 1.1 })); break; }
     case 22: {
       out.push(toon("farmer", "happy", R + 0.55, 0.3, { aL: [70 + 8 * Math.sin(u * 6), 100], elL: 20, prop: "carrot" }, { mirror: true, blink: B(70) }));
       for (let i = 0; i < 5; i++) out.push(bunny({ col: COLS[i], view: "front", face: "happy", hop: hopPh(u, 2, hh(i, 61)) * 0.12 }, R - 1.1 + i * 0.5, -1.05, { y: 0.12, scale: 0.75, noShadow: true }));
@@ -196,14 +206,15 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
     case 23: {
       const z = -3 + 5 * clamp(u / 2.4);
       out.push(toon("napoleon", "smug", R + 6, z, { step: u * 7, bob: Math.abs(Math.sin(u * 7)) * 4 }, { blink: B(80) }));
-      [[R + 5.45, 9.0, "brown"], [R + 6.62, 9.05, "grey"]].forEach(([x, zz, col], i) => {
+      [[R + 5.74, 9.2, "brown"], [R + 6.27, 9.25, "grey"]].forEach(([x, zz, col], i) => {
         const perk = clamp((u - 0.4 - i * 0.15) / 0.2);
         out.push(bunny({ col: col as Bunny, view: "back", ear: perk, hop: perk > 0 && perk < 1 ? 0.08 : 0 }, x as number, zz as number, { scale: 0.8 }));
       });
       break;
     }
     case 24: {
-      for (let i = 0; i < 5; i++) out.push(bunny({ col: COLS[i], view: "front", face: "happy", mouth: "grin", napkin: true, hop: hopPh(u, 3.5, i * 0.2) * 0.3, ear: 0.15 }, R + 5.35 + i * 0.32, 3.55 + (i % 2) * 0.3));
+      const jump = back((u - 1.42) / 0.18) * (1 - clamp((u - 1.75) / 0.3)) * 0.18;
+      for (let i = 0; i < 5; i++) out.push(bunny({ col: COLS[i], view: "front", face: "happy", mouth: "grin", napkin: true, hop: hopPh(u, 4.2, i * 0.2) * 0.55, stretch: hopPh(u, 4.2, i * 0.2) * 0.3, ear: 0.15 + 0.2 * Math.sin(u * 9 + i) }, R + 5.35 + i * 0.32, 3.55 + (i % 2) * 0.3, { y: jump }));
       if (u > 0.15) { const p = back((u - 0.15) / 0.3); out.push({ kind: "fx", key: "bub|dinner", cw: 512, ch: 512, draw: (g) => drawBubble(g, "dinner"), x: R + 6.0, y: 0.98, z: 3.4, w: 0.7 * p, h: 0.7 * p }); }
       break;
     }
@@ -225,7 +236,7 @@ const camp = (u: number): Item[] => {
 };
 /** foreground framing tufts (blurred by the lens) for low / insert shots: [x, z, scale] */
 const FG: Record<number, [number, number, number][]> = {
-  12: [[29.25, 6.3, 1.6], [30.75, 6.35, 1.4]], 23: [[R + 5.72, 9.75, 1.0], [R + 6.3, 9.8, 0.9]], 24: [[R + 5.8, 5.6, 1.1], [R + 6.22, 5.65, 1.0]],
+  12: [[29.25, 6.3, 1.6], [30.75, 6.35, 1.4]], 23: [[R + 5.62, 9.75, 0.75], [R + 6.42, 9.8, 0.7]], 24: [[R + 5.62, 5.6, 0.65], [R + 6.42, 5.65, 0.6]],
 };
 const drawTuft = (g: CanvasRenderingContext2D) => {
   for (let i = 0; i < 22; i++) {

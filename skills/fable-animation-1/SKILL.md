@@ -95,7 +95,7 @@ Reference reports are for look and pacing only. Story, characters, lines and sho
 ## Where to render (measured Nov 2026)
 - **Cloud session (no GPU):** works with software WebGL. `GL=swangle`, `BROWSER=/opt/pw-browsers/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell`,
   inputProps `{"post":{"dpr":0.3333}}` for 360p, `node scripts/clip.mjs out.mp4 0 <last> 0.3333333333333333 2`.
-  Speed: ~1.3 s/frame with concurrency 2 -> **44 s short = ~28 min at 360p**. Single stills are slow (~35 s each, shaders recompile) - batch them in one `stills.mjs` call (~9 s each).
+  Speed: 0.8-1.3 s/frame with concurrency 2 -> **44 s short = 18-28 min at 360p** (Napoleon v3: 1338 f in 18.5 min). Single stills are slow (~35 s each, shaders recompile) - batch them in one `stills.mjs` call (~9 s each).
   Scale must make integer sizes: use 0.3333333333333333 (not 0.3333333).
 - **Laptop RTX 3050 (Windows):** much faster (360p ~10-15 min, 1080p ~45-60 min). Cloud chats can NOT reach the laptop for this account (Remote Control folders show "not available");
   use a **local Claude Code session on the laptop** (Claude desktop app -> Code -> local session in the project folder): `git pull`, then
@@ -116,6 +116,19 @@ Reference reports are for look and pacing only. Story, characters, lines and sho
 - Foreground framing only at frame edges, never across a face; DOF cInf: CU/insert 12-13, MS 7-9, wides 3-4.
 - War map / signs: unlit `MeshBasicMaterial` canvas textures (lit ones go dark inside tents); redraw per state (cache one texture per state).
 - Faces stay above the caption line (captions at y ~1325): look target at face height, chin clear by ~120 px.
+- **Napoleon's cockade** (and any French tricolour roundel): BLUE centre, white, RED rim. Red centre = the British RAF roundel.
+- **Track shots: check the subject stays in frame for the whole move.** Horizontal half-width at distance d = d x tan(fov/2) x 9/16 (fov 40 -> 0.2 d).
+  v3 shot 13 tracked the empty field while Napoleon sat off the right edge.
+- **Low golden sun behind the tree line** throws long shadows over the whole field and the golden grade's blue shadow tint turns it navy.
+  Per-shot `SUN_EL`/`SUN_AZ` overrides (e.g. el 24, az 38) keep the ground green; lifting `shade` alone was not enough.
+
+## Pacing fixes that work (run `pacing_check.py` on every 360p preview)
+v3 scored median MAD 7.2 (target 15), quiet 1.9 s, calm ending. Built-in defaults now:
+- **Idle life on every card:** toons sway (lean +-0.035, head tilt +-0.05, arms +-7 deg, phase from position); bunnies twitch ears, nod and bob.
+  Quantise animated params finely (`q(v, 30-40)`) or the motion steps visibly.
+- **Holds push 1.5x faster plus a slow sideways arc** (3 % of the subject distance per second, eased) - still gentle (cam_speed p90 << 20).
+- Every hold > 1.2 s gets a mid-shot action: heads turn, a hop, a scratch-head gesture, an ear flick, a stamp.
+- **End on a hit:** last 0.6 s = punch-in (`back` ease, ~22 % closer) + everyone jumps on the last word.
 
 ## How the user wants to work
 - Tell the user **what you are doing, where (cloud / laptop) and roughly how long**, at every step; no need to ask permission for builds or test renders.
