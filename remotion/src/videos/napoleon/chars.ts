@@ -50,7 +50,7 @@ export class Dw {
 }
 
 // ---------------- the cast ----------------
-export type Who = "napoleon" | "berthier" | "tsar" | "hunter" | "hunter2" | "farmer";
+export type Who = "napoleon" | "berthier" | "tsar" | "hunter" | "hunter2" | "farmer" | "soldier" | "soldier2" | "drummer";
 type Look = { coat: string; front: string; pants: string; boot: string; hat: string; epaul?: boolean; forelock?: boolean; tache?: string; sash?: string;
   sideburns?: string; beard?: string; strap?: string; stubble?: boolean; straw?: boolean; overall?: boolean; skin?: string };
 export const WHO: Record<Who, Look> = {
@@ -60,6 +60,9 @@ export const WHO: Record<Who, Look> = {
   hunter: { coat: "#5a7a3a", front: "#c9b48a", pants: "#d8c9a2", boot: "#4a3324", hat: "tricorne", beard: "#6a4a30", strap: "#6a4a2e" },
   hunter2: { coat: "#8a3a2e", front: "#d8c9a2", pants: "#d8c9a2", boot: "#4a3324", hat: "tricorne", tache: "#4a3020", strap: "#6a4a2e" },
   farmer: { coat: "#3e6aa8", front: "#e9e2d0", pants: "#3e5f8f", boot: "#4a3324", hat: "straw", stubble: true, straw: true, overall: true },
+  soldier: { coat: "#2b4a9a", front: "#f1ede3", pants: "#f2eee4", boot: "#1d1a22", hat: "shako", strap: "#f1ede3" },
+  soldier2: { coat: "#2b4a9a", front: "#f1ede3", pants: "#f2eee4", boot: "#1d1a22", hat: "shako", tache: "#3a2a20", strap: "#f1ede3" },
+  drummer: { coat: "#c8323a", front: "#f1ede3", pants: "#f2eee4", boot: "#1d1a22", hat: "shako" },
 };
 export type Emo = "sly" | "neutral" | "proud" | "smug" | "worried" | "scared" | "shocked" | "angry" | "sad" | "deadpan" | "happy" | "determined" | "confused" | "excited";
 type EmoP = { lid: [number, number]; tilt: number; brow: [number, number]; bang: [number, number]; mouth: string; eye: number; look?: P2; sweat?: boolean; ring?: boolean; lines?: boolean; happy?: boolean; chin?: number };
@@ -137,6 +140,13 @@ const hat = (H: Dw, kind: string) => {
     if (kind === "bicorne_w") H.line(bez([-128, -46], [0, -90], [128, -46], 18), GOLD, 8);
     if (kind === "plume") for (let k = -3; k <= 3; k++) H.ell(k * 24, -150 + Math.abs(k) * 6, 19, 15, "#f4f1ea", 3);
     H.ell(80, -100, 16, 16, "#2b4aa8", 3); H.ell(80, -100, 10.5, 10.5, "#f4f1ea", 0); H.ell(80, -100, 5, 5, "#d9323a", 0);
+  } else if (kind === "shako") {
+    H.grad([[-56, -50], [56, -50], [50, -168], [-50, -168]], "#2e2a36", "#141218", 1.2, OL);
+    H.poly([[-60, -46], [60, -46], [56, -62], [-56, -62]], "#1a1820", 3);
+    H.poly([[-52, -160], [52, -160], [50, -172], [-50, -172]], "#e3b84a", 2.5);
+    H.poly([[-14, -130], [14, -130], [10, -96], [-10, -96]], "#e3b84a", 2.5);
+    H.ell(0, -184, 10, 18, "#d23a34", 3);
+    H.line(bez([-56, -48], [0, -10], [56, -48], 10), "#e3b84a", 3);
   } else if (kind === "tricorne") {
     H.grad([[-112, -40], [-76, -116], [0, -100], [76, -116], [112, -40], [0, -62]], "#5a4632", "#2e2218", 1.2, OL);
     H.line([[-102, -44], [0, -66], [102, -44]], "#c8a04a", 5);

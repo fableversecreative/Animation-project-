@@ -1,6 +1,6 @@
 // Who stands where, doing what, in every shot (pure function of shot id + frame). Acting without lip sync:
 // expressions + snappy poses change on the voice words; blinks every 0.5-2.3 s.
-import { SLOT } from "./story";
+import { SLOT, SHOTS } from "./story";
 import { drawToon, drawBunny, drawBubble, drawHatCard, drawQuill, drawSignature, musket, stick, clipboard, carrotProp, Who, Emo, Pose, BunnyOpts, Bunny } from "./chars";
 
 export type Item = {
@@ -208,5 +208,29 @@ export const stage = (id: number, f: number, u: number, env: { carriageX: number
       break;
     }
   }
+  if (SHOTS[id - 1].set === "field" && id !== 21) out.push(...camp(u));
+  const fg = FG[id];
+  if (fg) for (const [x, z, sc] of fg) out.push({ kind: "bunny", key: "fgtuft", draw: drawTuft, x, y: 0, z, scale: sc, noShadow: true });
   return out;
+};
+
+/** background camp life: soldiers in shakos standing in groups, a drummer, two walking sentries */
+const CAMP: [Who, number, number, number][] = [["soldier", -7, -15, 0], ["soldier2", -5.8, -15.4, 1], ["soldier", 2, -14, 2], ["drummer", 3.2, -14.6, 3], ["soldier", 8, -16, 4],
+  ["soldier2", 14, -15, 5], ["soldier", 15.1, -15.6, 6], ["soldier", 26, -15, 7], ["soldier2", 27.3, -14.4, 8], ["soldier", 35, -12, 9], ["drummer", 44, -12.5, 10],
+  ["soldier", 52, -13, 11], ["soldier2", 53.2, -12.6, 12], ["soldier", 62, -12, 13], ["soldier", 70, -13, 14]];
+const camp = (u: number): Item[] => {
+  const out: Item[] = CAMP.map(([w, x, z, i]) => toon(w, i % 3 === 0 ? "happy" : "neutral", x, z, { aR: [-20, 120], aL: i % 2 ? [40, 110] : [20, 120], tilt: 0.05 * Math.sin(u * 1.3 + i) }, { blink: blinkAt(u, 90 + i) }));
+  for (let k = 0; k < 2; k++) { const x = (k ? 60 : 0) + ((u * 1.1 + k * 7) % 14) * (k ? -1 : 1); out.push(toon("soldier", "neutral", x, -10.5 - k, { step: u * 6 + k, aR: [-20, 120], aL: [20, 120] }, { mirror: !!k })); }
+  return out;
+};
+/** foreground framing tufts (blurred by the lens) for low / insert shots: [x, z, scale] */
+const FG: Record<number, [number, number, number][]> = {
+  12: [[29.25, 6.3, 1.6], [30.75, 6.35, 1.4]], 23: [[R + 5.72, 9.75, 1.0], [R + 6.3, 9.8, 0.9]], 24: [[R + 5.8, 5.6, 1.1], [R + 6.22, 5.65, 1.0]],
+};
+const drawTuft = (g: CanvasRenderingContext2D) => {
+  for (let i = 0; i < 22; i++) {
+    const x = 200 + (hh(i, 71) - 0.5) * 300, h = 140 + hh(i, 72) * 220, w = 9 + hh(i, 73) * 9, lean = (hh(i, 74) - 0.5) * 90;
+    g.beginPath(); g.moveTo(x - w, 400); g.quadraticCurveTo(x + lean * 0.4, 400 - h * 0.6, x + lean, 400 - h); g.quadraticCurveTo(x + w * 0.4 + lean * 0.4, 400 - h * 0.6, x + w, 400); g.closePath();
+    g.fillStyle = ["#5e9a34", "#6fae3e", "#4f8a2c", "#7cba48"][i % 4]; g.fill(); g.lineWidth = 2; g.strokeStyle = "rgba(40,70,25,0.6)"; g.stroke();
+  }
 };

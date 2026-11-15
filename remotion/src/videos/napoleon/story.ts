@@ -44,53 +44,53 @@ const S = (i: number, set: SetName, light: Light, cInf: number, cam: (a: number,
   ({ id: i + 1, a: B[i], b: B[i + 1], set, light, cInf, cam: cam(B[i], B[i + 1]), focus });
 export const SHOTS: ShotDef[] = [
   // 1 "Napoleon conquered…" hero by the camp flag
-  S(0, "field", "day", 3, (a) => hold(a, [0.35, 1.0, 3.1], [0, 1.02, 0], 0.06)),
+  S(0, "field", "day", 4, (a) => hold(a, [0.35, 1.0, 3.1], [0, 1.02, 0], 0.06)),
   // 2 "…half of Europe" war map on its easel, red spreading
   S(1, "map", "day", 2, (a) => hold(a, [M, 1.32, 1.75], [M, 1.32, -0.5], 0.05)),
   // 3 "But he lost one battle…" close-up, smug -> worried
-  S(2, "field", "day", 9, (a) => hold(a, [6.25, 1.22, 3.75], [6, 1.2, 2], 0.05)),
+  S(2, "field", "day", 13, (a) => hold(a, [6.25, 1.22, 3.75], [6, 1.2, 2], 0.05)),
   // 4 "…to bunnies." one bunny pops up, eye level
-  S(3, "field", "day", 10, (a) => hold(a, [8.1, 0.33, 5.05], [8, 0.22, 4], 0.08)),
+  S(3, "field", "day", 13, (a) => hold(a, [8.1, 0.33, 5.05], [8, 0.22, 4], 0.08)),
   // 5 "In 1807, after signing…" treaty insert, quill + seal
-  S(4, "tent", "day", 7, (a) => hold(a, [T + 0.05, 1.28, 0.62], [T, 0.86, 0.02], 0.04)),
+  S(4, "tent", "day", 12, (a) => hold(a, [T + 0.05, 1.28, 0.62], [T, 0.86, 0.02], 0.04)),
   // 6 "…a big peace treaty" handshake with the Tsar
-  S(5, "tent", "day", 4, (a) => hold(a, [T, 1.25, 3.4], [T, 1.05, -0.7], 0.05)),
+  S(5, "tent", "day", 7, (a) => hold(a, [T, 1.25, 3.4], [T, 1.05, -0.7], 0.05)),
   // 7 "Napoleon wanted to celebrate with a rabbit hunt" musket up, thought bubble
-  S(6, "field", "day", 5, (a) => hold(a, [12.35, 1.12, 3.0], [12, 1.1, 0], 0.045)),
+  S(6, "field", "day", 8, (a) => hold(a, [12.35, 1.12, 3.0], [12, 1.1, 0], 0.045)),
   // 8 "So his chief of staff…" Berthier with his list
-  S(7, "field", "day", 6, (a) => hold(a, [16.25, 1.2, 3.25], [16, 1.15, 1], 0.05)),
+  S(7, "field", "day", 9, (a) => hold(a, [16.25, 1.2, 3.25], [16, 1.15, 1], 0.05)),
   // 9 "…rounded up hundreds of rabbits" rows of crates, truck right
-  S(8, "field", "day", 3, (a, b) => track(a, b, [36.5, 0.95, 1.4], [37.5, 0.42, -2.6], [42.5, 0.95, 1.4], [43.5, 0.42, -2.6])),
+  S(8, "field", "day", 4, (a, b) => track(a, b, [36.5, 0.95, 1.4], [37.5, 0.42, -2.6], [42.5, 0.95, 1.4], [43.5, 0.42, -2.6])),
   // 10 "The cages opened." door swings open, eye level
-  S(9, "field", "day", 9, (a) => hold(a, [40.05, 0.48, 1.35], [40, 0.42, 0], 0.07)),
+  S(9, "field", "day", 12, (a) => hold(a, [40.05, 0.48, 1.35], [40, 0.42, 0], 0.07)),
   // 11 "The hunters raised their guns." line of three, aim
-  S(10, "field", "day", 4, (a) => hold(a, [24, 1.2, 4.3], [24, 1.05, -0.3], 0.05)),
+  S(10, "field", "day", 7, (a) => hold(a, [24, 1.2, 4.3], [24, 1.05, -0.3], 0.05)),
   // 12 "And the rabbits didn't run away." rabbits sit, Napoleon confused behind
-  S(11, "field", "day", 5, (a) => hold(a, [30, 0.9, 7.6], [30, 0.6, 0], 0.04)),
+  S(11, "field", "day", 6, (a) => hold(a, [30, 0.9, 7.6], [30, 0.6, 0], 0.04)),
   // 13 "They ran straight at Napoleon!" side tracking charge
-  S(12, "field", "day", 3, (a, b) => track(a, b, [28.5, 0.85, 4.4], [29.5, 0.55, 0], [31, 0.85, 4.4], [31.8, 0.6, 0])),
+  S(12, "field", "day", 4, (a, b) => track(a, b, [28.5, 0.85, 4.4], [29.5, 0.55, 0], [31, 0.85, 4.4], [31.8, 0.6, 0])),
   // 14 "Hundreds of them swarmed…" swarm, arms up
-  S(13, "field", "day", 5, (a) => hold(a, [32, 1.1, 3.3], [32, 1.0, 0], 0.08)),
+  S(13, "field", "day", 7, (a) => hold(a, [32, 1.1, 3.3], [32, 1.0, 0], 0.08)),
   // 15 "…climbed up his legs." close-up, bunny on the hat
-  S(14, "field", "day", 9, (a) => hold(a, [32.08, 1.55, 2.0], [32, 1.52, 0], 0.06)),
+  S(14, "field", "day", 13, (a) => hold(a, [32.08, 1.55, 2.0], [32, 1.52, 0], 0.06)),
   // 16 "His men swung whips and sticks." wide two-shot
-  S(15, "field", "day", 4, (a) => hold(a, [35.2, 1.1, 4.4], [35.2, 0.9, -0.3], 0.04)),
+  S(15, "field", "day", 7, (a) => hold(a, [35.2, 1.1, 4.4], [35.2, 0.9, -0.3], 0.04)),
   // 17 "Nothing worked." deadpan, buried
-  S(16, "field", "day", 8, (a) => hold(a, [32, 1.15, 2.45], [32, 1.08, 0], 0.03)),
+  S(16, "field", "day", 11, (a) => hold(a, [32, 1.15, 2.45], [32, 1.08, 0], 0.03)),
   // 18 "The great emperor retreated to his carriage…" run, tracking
-  S(17, "field", "golden", 3, (a, b) => track(a, b, [41, 1.05, 8.5], [41, 0.9, 1], [60, 1.05, 8.5], [61, 0.9, 1])),
+  S(17, "field", "golden", 4, (a, b) => track(a, b, [41, 1.05, 8.5], [41, 0.9, 1], [60, 1.05, 8.5], [61, 0.9, 1])),
   // 19 "…and the rabbits chased him there too." carriage flees, tracking
-  S(18, "field", "golden", 3, (a, b) => track(a, b, [63, 1.1, 9.5], [64, 0.9, 0], [76, 1.1, 9.5], [77, 0.9, 0])),
+  S(18, "field", "golden", 4, (a, b) => track(a, b, [63, 1.1, 9.5], [64, 0.9, 0], [76, 1.1, 9.5], [77, 0.9, 0])),
   // 20 "Why?" one bunny, head tilt
-  S(19, "farm", "day", 10, (a) => hold(a, [R + 3.05, 0.33, 4.0], [R + 3, 0.22, 3], 0.05)),
+  S(19, "farm", "day", 13, (a) => hold(a, [R + 3.05, 0.33, 4.0], [R + 3, 0.22, 3], 0.05)),
   // 21 "They weren't wild rabbits." a scruffy wild hare at the forest edge
-  S(20, "field", "day", 9, (a) => hold(a, [-20, 0.42, -56.9], [-20, 0.4, -58], 0.05)),
+  S(20, "field", "day", 13, (a) => hold(a, [-20, 0.42, -56.9], [-20, 0.4, -58], 0.05)),
   // 22 "They were tame farm rabbits." farmer feeding a hutch full of bunnies
-  S(21, "farm", "day", 4, (a) => hold(a, [R, 1.0, 4.2], [R, 0.8, 0], 0.045)),
+  S(21, "farm", "day", 8, (a) => hold(a, [R, 1.0, 4.2], [R, 0.8, 0], 0.045)),
   // 23 "And when they saw a man walking toward them…" bunny-eye view, Napoleon approaches
-  S(22, "farm", "golden", 5, (a) => hold(a, [R + 6, 0.32, 10.2], [R + 6, 0.62, 0], 0.03)),
+  S(22, "farm", "golden", 6, (a) => hold(a, [R + 6, 0.32, 10.2], [R + 6, 0.62, 0], 0.03)),
   // 24 "…they thought it was dinner time." napkins on, dinner bell
-  S(23, "farm", "golden", 6, (a) => hold(a, [R + 6, 0.62, 6.6], [R + 6, 0.5, 3.6], 0.05)),
+  S(23, "farm", "golden", 9, (a) => hold(a, [R + 6, 0.62, 6.6], [R + 6, 0.5, 3.6], 0.05)),
 ];
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 export const layersAt = (f: number): { id: number; alpha: number }[] => [{ id: shotAt(f).id, alpha: 1 }];
